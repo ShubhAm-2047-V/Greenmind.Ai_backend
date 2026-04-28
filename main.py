@@ -11,10 +11,10 @@ import io
 
 app = FastAPI(title="Plant Disease Detection AI")
 
+import tempfile
+
 # Ensure temp directory exists
-TEMP_DIR = "temp"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
+TEMP_DIR = tempfile.gettempdir()
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...), provider: str = "gemini"):
