@@ -220,6 +220,10 @@ async def login_route(request: dict):
         "email": email
     }
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "Backend is alive!"}
+
 @app.get("/")
 def read_root():
     return JSONResponse(
