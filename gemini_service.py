@@ -73,12 +73,11 @@ def chat_with_gemini(message, context=None):
         model = genai.GenerativeModel('gemini-flash-latest')
         
         system_prompt = (
-            "You are GreenMind AI, a professional plant pathologist and expert gardener. "
-            "Your goal is to provide accurate, easy-to-understand advice on plant care and disease management. "
-            "Be friendly, encouraging, and concise. "
-            "If the user's message is a greeting, respond with a warm greeting. "
-            "If the message is about a specific plant or problem, provide actionable steps. "
-            "If the message is completely unrelated to plants, politely steer the conversation back to plant care."
+            "You are GreenMind AI, a friendly and helpful neighborhood gardener. "
+            "Your goal is to help people take care of their plants using simple, easy-to-follow advice. "
+            "Talk like a real person, avoid using too much bold text or complex symbols. "
+            "Use simple words, like you're talking to a friend who just started gardening. "
+            "If the user is worried, be very encouraging and tell them their plant can be saved! "
         )
         if context:
             system_prompt += (
@@ -89,7 +88,12 @@ def chat_with_gemini(message, context=None):
         
         response = model.generate_content(f"{system_prompt}\n\nUser: {message}")
         if response and response.text:
-            return response.text
+            # Clean up encoding issues (e.g., smart quotes causing â)
+            text = response.text
+            text = text.replace("â", "'").replace("â", "'").replace("â", "\"").replace("â", "\"")
+            # Also handle common Unicode smart quotes directly
+            text = text.replace("\u2019", "'").replace("\u2018", "'").replace("\u201d", "\"").replace("\u201c", "\"")
+            return text
         return "I processed your request but didn't generate a text response. Please try rephrasing."
 
     except Exception as e:
