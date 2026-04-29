@@ -98,6 +98,19 @@ async def login_route(request: dict):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"Database Error: {str(e)}"})
 
+@app.get("/weather")
+async def get_weather(city: str = "solapur"):
+    api_key = os.getenv("WEATHER_API_KEY")
+    if not api_key:
+        return JSONResponse(status_code=500, content={"error": "Weather API key not configured"})
+    
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    try:
+        response = requests.get(url)
+        return JSONResponse(content=response.json())
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 @app.post("/analyze")
 async def analyze_plant(
     image: UploadFile = File(...),
@@ -106,8 +119,9 @@ async def analyze_plant(
     try:
         contents = await image.read()
         
-        # Save temporary file for Gemini
-        temp_path = "temp_analysis.jpg"
+        # Use a unique filename to avoid conflicts
+        import uuid
+        temp_path = f"temp_{uuid.uuid4()}.jpg"
         with open(temp_path, "wb") as f:
             f.write(contents)
         
@@ -120,11 +134,13 @@ async def analyze_plant(
         if not result:
             return JSONResponse(status_code=500, content={"error": "AI analysis failed"})
             
+        # Ensure result is returned with UTF-8 encoding
         return JSONResponse(
             content=result,
             media_type="application/json; charset=utf-8"
         )
     except Exception as e:
+        print(f"Analyze Error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/chat")
