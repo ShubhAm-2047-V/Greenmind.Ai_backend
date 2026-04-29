@@ -72,9 +72,20 @@ def chat_with_gemini(message, context=None):
         genai.configure(api_key=current_api_key)
         model = genai.GenerativeModel('gemini-flash-latest')
         
-        system_prompt = "You are GreenMind AI, a helpful plant care and disease expert. Keep your answers concise and friendly."
+        system_prompt = (
+            "You are GreenMind AI, a professional plant pathologist and expert gardener. "
+            "Your goal is to provide accurate, easy-to-understand advice on plant care and disease management. "
+            "Be friendly, encouraging, and concise. "
+            "If the user's message is a greeting, respond with a warm greeting. "
+            "If the message is about a specific plant or problem, provide actionable steps. "
+            "If the message is completely unrelated to plants, politely steer the conversation back to plant care."
+        )
         if context:
-            system_prompt += f" Context: The user is asking about a plant with the following details: {context}."
+            system_prompt += (
+                f"\n\nIMPORTANT CONTEXT: The user has just analyzed a plant with your app. "
+                f"The analysis results are: {context}. "
+                "Refer to these details if the user asks for more information or clarification."
+            )
         
         response = model.generate_content(f"{system_prompt}\n\nUser: {message}")
         if response and response.text:
