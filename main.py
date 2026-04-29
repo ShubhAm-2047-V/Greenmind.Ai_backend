@@ -18,9 +18,17 @@ app = FastAPI(title="Plant Disease Detection AI")
 # Supabase Setup
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+supabase: Client = None
 
-# Add CORS middleware to allow testing from Flutter Web
+if url and key:
+    try:
+        supabase = create_client(url, key)
+    except Exception as e:
+        print(f"Supabase init error: {e}")
+else:
+    print("Supabase credentials missing!")
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -156,6 +164,9 @@ async def chat(request: dict):
 
 @app.post("/register")
 async def register(request: dict):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Database not connected. Check Vercel Environment Variables."})
+    
     email = request.get("email")
     password = request.get("password")
     
@@ -183,6 +194,9 @@ async def register(request: dict):
 
 @app.post("/login")
 async def login_route(request: dict):
+    if not supabase:
+        return JSONResponse(status_code=500, content={"error": "Database not connected. Check Vercel Environment Variables."})
+    
     email = request.get("email")
     password = request.get("password")
     
