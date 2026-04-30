@@ -51,6 +51,7 @@ def analyze_image_with_gemini(image_path, language="english"):
     If it is NOT a plant leaf, set is_plant to false.
     """
 
+    all_errors = []
     for i, key in enumerate(API_KEYS):
         try:
             print(f"DEBUG: Trying Gemini API Key #{i+1}...")
@@ -70,7 +71,7 @@ def analyze_image_with_gemini(image_path, language="english"):
                 print(f"WARNING: Key #{i+1} returned empty response.")
                 continue
                 
-            # Clean up the response (remove ```json ... ```)
+            # Clean up the response
             text = response.text.strip()
             if text.startswith("```json"):
                 text = text[7:-3].strip()
@@ -81,16 +82,13 @@ def analyze_image_with_gemini(image_path, language="english"):
             
         except Exception as e:
             error_msg = str(e)
+            all_errors.append(error_msg)
             print(f"ERROR: Gemini Key #{i+1} failed: {error_msg}")
-            
-            # If it's a quota error, move to next key
-            if "429" in error_msg or "quota" in error_msg.lower():
-                print(f"DEBUG: Key #{i+1} quota exceeded. Rotating...")
-                continue
-            else:
-                # Other errors (invalid key, etc.) - still try next key
-                continue
+            continue
                 
+    if any("429" in err or "quota" in err.lower() for err in all_errors):
+        return {"error": "QUOTA_EXCEEDED"}
+    
     print("CRITICAL: All Gemini API keys failed!")
     return None
 

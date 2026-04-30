@@ -116,6 +116,9 @@ async def analyze_plant(
             
         if not result:
             return JSONResponse(status_code=500, content={"error": "AI analysis failed"})
+            
+        if isinstance(result, dict) and result.get("error") == "QUOTA_EXCEEDED":
+            return JSONResponse(status_code=429, content={"error": "Free AI limit reached. Please try again in 1 minute."})
         
         # Save to history and send email (in a separate try block to prevent main failure)
         if email and supabase:
