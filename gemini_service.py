@@ -55,11 +55,16 @@ def analyze_image_with_gemini(image_path, language="english"):
         try:
             print(f"DEBUG: Trying Gemini API Key #{i+1}...")
             genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-2.5-flash')
             
-            img = Image.open(image_path)
-            
-            response = model.generate_content([prompt, img])
+            try:
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                img = Image.open(image_path)
+                response = model.generate_content([prompt, img])
+            except Exception as e:
+                print(f"DEBUG: gemini-2.5-flash failed, trying 2.0-flash... ({e})")
+                model = genai.GenerativeModel('gemini-2.0-flash')
+                img = Image.open(image_path)
+                response = model.generate_content([prompt, img])
             
             if not response or not response.text:
                 print(f"WARNING: Key #{i+1} returned empty response.")

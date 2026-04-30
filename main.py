@@ -117,21 +117,22 @@ async def analyze_plant(
         if not result:
             return JSONResponse(status_code=500, content={"error": "AI analysis failed"})
         
-        # Save to history if email is provided
+        # Save to history and send email (in a separate try block to prevent main failure)
         if email and supabase:
             try:
                 scan_data = {
                     "user_email": email,
                     "plant_name": result.get("plant", "Unknown"),
                     "disease_name": result.get("disease", "Healthy"),
-                    "confidence": 0.95 # Mock confidence for now
+                    "confidence": 0.95 
                 }
                 supabase.table("scans").insert(scan_data).execute()
+                print(f"DEBUG: Saved to history for {email}")
                 
-                # Send automatic email report
+                # Send email report (only if email is provided)
                 send_analysis_report(email, result)
             except Exception as e:
-                print(f"Failed to save scan: {e}")
+                print(f"WARNING: Background task failed (History/Email): {e}")
             
         return JSONResponse(content=result, media_type="application/json; charset=utf-8")
     except Exception as e:
