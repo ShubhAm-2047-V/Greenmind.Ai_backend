@@ -7,14 +7,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def send_analysis_report(receiver_email, result):
-    # Get configuration from .env
     smtp_server = os.getenv("EMAIL_HOST", "smtp.gmail.com")
     smtp_port = int(os.getenv("EMAIL_PORT", "587"))
     sender_email = os.getenv("EMAIL_USER")
     sender_password = os.getenv("EMAIL_PASSWORD")
 
     if not sender_email or not sender_password or "your-email" in sender_email:
-        print("ERROR: Email credentials not configured in .env. Skipping email.")
+        print("ERROR: Email credentials not configured. Skipping email.")
         return False
 
     plant = result.get("plant", "Unknown Plant")
@@ -23,46 +22,80 @@ def send_analysis_report(receiver_email, result):
     description = result.get("description", "")
     cause = result.get("cause", "")
     solution = result.get("solution", "")
+    
+    is_healthy = disease.lower() == "healthy"
+    status_color = "#2e7d32" if is_healthy else "#d32f2f"
+    bg_gradient = "linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)"
 
-    # Create the email content
     message = MIMEMultipart("alternative")
-    message["Subject"] = f"GreenMind AI: Plant Analysis Report ({plant})"
+    message["Subject"] = f"🌿 Analysis Ready: {plant} ({disease})"
     message["From"] = f"GreenMind AI <{sender_email}>"
     message["To"] = receiver_email
 
     html_content = f"""
     <html>
-    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-            <div style="background-color: #2e7d32; padding: 30px; text-align: center;">
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Plant Analysis Report</h1>
-            </div>
+    <head>
+        <style>
+            .card {{
+                background: #ffffff;
+                border-radius: 16px;
+                padding: 24px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }}
+            .badge {{
+                display: inline-block;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+        </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8faf9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+        <div style="max-width: 600px; margin: 40px auto; overflow: hidden;">
             
-            <div style="padding: 30px;">
-                <p style="font-size: 16px; color: #333;">Hello,</p>
-                <p style="font-size: 16px; color: #555;">We have analyzed your plant image. Here is the detailed report:</p>
+            <!-- PREMIUM HEADER -->
+            <div style="background: {bg_gradient}; padding: 40px 20px; text-align: center; border-radius: 24px 24px 0 0;">
+                <div style="color: rgba(255,255,255,0.8); font-size: 12px; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">GreenMind AI</div>
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 300;">Analysis <span style="font-weight: bold;">Report</span></h1>
+            </div>
+
+            <!-- CONTENT CONTAINER -->
+            <div style="padding: 20px; background: #f8faf9; border-radius: 0 0 24px 24px; border: 1px solid #eee; border-top: none;">
                 
-                <div style="background-color: #f1f8e9; border-left: 5px solid #2e7d32; padding: 20px; margin: 25px 0;">
-                    <p style="margin: 5px 0;"><strong>🌿 Plant:</strong> {plant}</p>
-                    <p style="margin: 5px 0;"><strong>⚠️ Condition:</strong> <span style="color: {'#d32f2f' if disease != 'Healthy' else '#2e7d32'};">{disease}</span></p>
-                    <p style="margin: 5px 0;"><strong>🎯 Confidence:</strong> {confidence}</p>
+                <!-- MAIN STATUS CARD -->
+                <div class="card" style="text-align: center; border-top: 4px solid {status_color};">
+                    <div style="font-size: 48px; margin-bottom: 10px;">{'🌿' if is_healthy else '⚠️'}</div>
+                    <h2 style="margin: 0; color: #1a1a1a; font-size: 22px;">{plant}</h2>
+                    <p style="color: {status_color}; font-weight: bold; font-size: 18px; margin: 10px 0;">{disease}</p>
+                    <div class="badge" style="background: #e3f2fd; color: #1976d2;">Confidence: {confidence}</div>
                 </div>
-                
-                <h3 style="color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 10px;">Summary</h3>
-                <p style="color: #666; line-height: 1.6;">{description}</p>
-                
-                <h3 style="color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 10px;">Cause</h3>
-                <p style="color: #666; line-height: 1.6;">{cause}</p>
-                
-                <h3 style="color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 10px;">Treatment Plan</h3>
-                <p style="color: #333; line-height: 1.6; background-color: #fff9c4; padding: 15px; border-radius: 8px;">{solution}</p>
-                
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
-                
-                <p style="font-size: 12px; color: #999; text-align: center;">
-                    GreenMind AI - Your Digital Garden Assistant<br>
-                    This is an AI-generated report. Always consult a professional for critical plant care.
-                </p>
+
+                <!-- DESCRIPTION SECTION -->
+                <div class="card">
+                    <h3 style="color: #2e7d32; margin-top: 0; font-size: 16px;">Detailed Findings</h3>
+                    <p style="color: #4a4a4a; line-height: 1.6; font-size: 14px; margin-bottom: 0;">{description}</p>
+                </div>
+
+                <!-- TWO COLUMN GRID (Mockup for Cause/Solution) -->
+                <div class="card" style="background: #fff9c4; border-left: 4px solid #fbc02d;">
+                    <h3 style="color: #827717; margin-top: 0; font-size: 14px; text-transform: uppercase;">Possible Cause</h3>
+                    <p style="color: #333; font-size: 14px; margin-bottom: 0;">{cause}</p>
+                </div>
+
+                <div class="card" style="background: #e8f5e9; border-left: 4px solid #2e7d32;">
+                    <h3 style="color: #1b5e20; margin-top: 0; font-size: 14px; text-transform: uppercase;">Treatment Plan</h3>
+                    <p style="color: #1b5e20; font-size: 14px; line-height: 1.6; margin-bottom: 0;">{solution}</p>
+                </div>
+
+                <!-- FOOTER -->
+                <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                    <p>Designed by GreenMind AI Expert Systems</p>
+                    <p>You received this because you requested a plant analysis via our mobile app.</p>
+                </div>
             </div>
         </div>
     </body>
@@ -73,14 +106,12 @@ def send_analysis_report(receiver_email, result):
     message.attach(part)
 
     try:
-        # Create a secure SSL context and send the email
         with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls() # Secure the connection
+            server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
-            
-        print(f"DEBUG: Email sent successfully to {receiver_email}")
+        print(f"DEBUG: Premium email sent successfully to {receiver_email}")
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send email: {e}")
+        print(f"ERROR: Failed to send premium email: {e}")
         return False
