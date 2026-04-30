@@ -54,7 +54,7 @@ def analyze_image_with_gemini(image_path, language="english"):
         try:
             print(f"DEBUG: Trying Gemini API Key #{i+1}...")
             genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             img = Image.open(image_path)
             
@@ -97,7 +97,7 @@ def chat_with_gemini(message, context="", language="english"):
     for i, key in enumerate(API_KEYS):
         try:
             genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             response = model.generate_content(full_prompt)
             return response.text
         except Exception as e:
