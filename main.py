@@ -10,6 +10,7 @@ from PIL import Image
 import io
 from supabase import create_client, Client
 from auth_utils import get_password_hash, verify_password, create_access_token
+from email_service import send_analysis_report
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -126,6 +127,9 @@ async def analyze_plant(
                     "confidence": 0.95 # Mock confidence for now
                 }
                 supabase.table("scans").insert(scan_data).execute()
+                
+                # Send automatic email report
+                send_analysis_report(email, result)
             except Exception as e:
                 print(f"Failed to save scan: {e}")
             
