@@ -121,7 +121,7 @@ async def analyze_plant(
             try:
                 scan_data = {
                     "user_email": email,
-                    "plant_name": result.get("plant_name", "Unknown"),
+                    "plant_name": result.get("plant", "Unknown"),
                     "disease_name": result.get("disease", "Healthy"),
                     "confidence": 0.95 # Mock confidence for now
                 }

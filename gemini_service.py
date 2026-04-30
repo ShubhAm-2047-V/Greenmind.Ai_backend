@@ -38,14 +38,15 @@ def analyze_image_with_gemini(image_path, language="english"):
     JSON structure:
     {{
         "is_plant": boolean,
-        "plant_name": "name of the plant",
+        "plant": "name of the plant",
         "disease": "name of the disease or 'Healthy'",
-        "confidence": float (0-1),
-        "description": "brief description of the condition",
-        "symptoms": ["symptom 1", "symptom 2"],
-        "treatment": ["step 1", "step 2"],
-        "prevention": ["tip 1", "tip 2"]
+        "confidence": "95%", 
+        "description": "brief description",
+        "cause": "what caused this",
+        "solution": "how to fix it"
     }}
+    
+    Note: confidence should be a string (e.g. "95%").
     
     If it is NOT a plant leaf, set is_plant to false.
     """
