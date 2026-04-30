@@ -58,7 +58,7 @@ def analyze_image_with_gemini(image_path, language="english"):
             genai.configure(api_key=key)
             
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 img = Image.open(image_path)
                 response = model.generate_content([prompt, img])
             except Exception as e:

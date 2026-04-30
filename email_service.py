@@ -13,8 +13,12 @@ def send_analysis_report(receiver_email, result):
     sender_password = os.getenv("EMAIL_PASSWORD")
 
     if not sender_email or not sender_password or "your-email" in sender_email:
-        print("ERROR: Email credentials not configured. Skipping email.")
+        print(f"ERROR: Email credentials not fully configured. User: {sender_email}")
         return False
+
+    # Gmail App Passwords usually have spaces, but SMTP needs them stripped
+    if sender_password:
+        sender_password = sender_password.replace(" ", "")
 
     plant = result.get("plant", "Unknown Plant")
     disease = result.get("disease", "Unknown Condition")
@@ -106,12 +110,16 @@ def send_analysis_report(receiver_email, result):
     message.attach(part)
 
     try:
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
+        print(f"DEBUG: Connecting to SMTP {smtp_server}:{smtp_port}...")
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
         print(f"DEBUG: Premium email sent successfully to {receiver_email}")
         return True
+    except smtplib.SMTPAuthenticationError:
+        print("ERROR: SMTP Authentication failed. Check your EMAIL_USER and EMAIL_PASSWORD (App Password).")
+        return False
     except Exception as e:
-        print(f"ERROR: Failed to send premium email: {e}")
+        print(f"ERROR: Failed to send premium email to {receiver_email}: {type(e).__name__}: {e}")
         return False

@@ -1,4 +1,4 @@
-# GreenMind AI Backend - Restarting with SMTP
+# GreenMind AI Backend - SMTP & Stability Update
 import os
 import uuid
 import requests
@@ -122,21 +122,28 @@ async def analyze_plant(
             return JSONResponse(status_code=429, content={"error": "Free AI limit reached. Please try again in 1 minute."})
         
         # Save to history and send email (in a separate try block to prevent main failure)
-        if email and supabase:
+        if email:
             try:
-                scan_data = {
-                    "user_email": email,
-                    "plant_name": result.get("plant", "Unknown"),
-                    "disease_name": result.get("disease", "Healthy"),
-                    "confidence": 0.95 
-                }
-                supabase.table("scans").insert(scan_data).execute()
-                print(f"DEBUG: Saved to history for {email}")
+                print(f"DEBUG: Processing request for email: {email}")
+                if supabase:
+                    scan_data = {
+                        "user_email": email,
+                        "plant_name": result.get("plant", "Unknown"),
+                        "disease_name": result.get("disease", "Healthy"),
+                        "confidence": 0.95 
+                    }
+                    supabase.table("scans").insert(scan_data).execute()
+                    print(f"DEBUG: Saved to history for {email}")
+                else:
+                    print("DEBUG: Supabase not connected, skipping history save.")
                 
                 # Send email report (only if email is provided)
+                print(f"DEBUG: Attempting to send premium email report to {email}...")
                 send_analysis_report(email, result)
             except Exception as e:
                 print(f"WARNING: Background task failed (History/Email): {e}")
+        else:
+            print("DEBUG: No email provided, skipping history and email report.")
             
         return JSONResponse(content=result, media_type="application/json; charset=utf-8")
     except Exception as e:
