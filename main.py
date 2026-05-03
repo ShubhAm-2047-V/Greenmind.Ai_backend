@@ -149,7 +149,10 @@ async def analyze_plant(
                         "user_email": email,
                         "plant_name": result.get("plant", "Unknown"),
                         "disease_name": result.get("disease", "Healthy"),
-                        "confidence": 0.95 
+                        "confidence": result.get("confidence", 0.95),
+                        "description": result.get("description", ""),
+                        "cause": result.get("cause", ""),
+                        "solution": result.get("solution", "")
                     }
                     supabase.table("scans").insert(scan_data).execute()
                     print(f"DEBUG: Saved to history for {email}")
