@@ -9,6 +9,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def sanitize_for_pdf(text):
+    """Remove or replace characters that the default PDF font doesn't support."""
+    if not text: return ""
+    # Convert to string and handle basic unicode to latin-1
+    try:
+        # Try to encode as latin-1 to see if it's supported
+        text.encode('latin-1')
+        return text
+    except (UnicodeEncodeError, AttributeError):
+        # Fallback: remove non-latin characters for the PDF report
+        import re
+        sanitized = re.sub(r'[^\x00-\xFF]+', '?', str(text))
+        return sanitized
+
 class PlantReportPDF(FPDF):
     def header(self):
         # Add Logo Watermark/Branding
@@ -45,12 +59,12 @@ def generate_pdf_report(result, output_path):
     pdf = PlantReportPDF()
     pdf.add_page()
     
-    plant = result.get("plant", "Unknown Plant")
-    disease = result.get("disease", "Unknown Condition")
-    confidence = result.get("confidence", "N/A")
-    description = result.get("description", "")
-    cause = result.get("cause", "")
-    solution = result.get("solution", "")
+    plant = sanitize_for_pdf(result.get("plant", "Unknown Plant"))
+    disease = sanitize_for_pdf(result.get("disease", "Unknown Condition"))
+    confidence = sanitize_for_pdf(str(result.get("confidence", "N/A")))
+    description = sanitize_for_pdf(result.get("description", ""))
+    cause = sanitize_for_pdf(result.get("cause", ""))
+    solution = sanitize_for_pdf(result.get("solution", ""))
 
     # Main Status Header
     pdf.set_font('Helvetica', 'B', 20)
@@ -98,9 +112,6 @@ def generate_pdf_report(result, output_path):
     pdf.set_text_color(27, 94, 32)
     pdf.multi_cell(0, 7, solution)
 
-    # Add a watermark-like logo in center if possible (optional, already in header)
-    # For a true watermark, we could add a large faint logo here but fpdf2 opacity is complex
-    
     pdf.output(output_path)
     return output_path
 

@@ -14,6 +14,19 @@ from auth_utils import get_password_hash, verify_password, create_access_token
 from email_service import send_analysis_report
 from dotenv import load_dotenv
 
+def sanitize_for_pdf(text):
+    """Remove or replace characters that the default PDF font doesn't support."""
+    if not text: return ""
+    # Convert to string and handle basic unicode to latin-1
+    try:
+        # Try to encode as latin-1 to see if it's supported
+        text.encode('latin-1')
+        return text
+    except UnicodeEncodeError:
+        # Fallback: remove non-latin characters for the PDF report
+        import re
+        return re.sub(r'[^\x00-\xFF]+', '?', str(text))
+
 load_dotenv()
 
 app = FastAPI(title="Plant Disease Detection AI")
@@ -127,8 +140,16 @@ async def analyze_plant(
             return JSONResponse(status_code=500, content=result)
         
         # Save to history and send email (in a separate try block to prevent main failure)
+        email_status = "Not requested"
         if email:
             try:
+                plant = sanitize_for_pdf(result.get("plant", "Unknown Plant"))
+                disease = sanitize_for_pdf(result.get("disease", "Unknown Condition"))
+                confidence = sanitize_for_pdf(str(result.get("confidence", "N/A")))
+                description = sanitize_for_pdf(result.get("description", ""))
+                cause = sanitize_for_pdf(result.get("cause", ""))
+                solution = sanitize_for_pdf(result.get("solution", ""))
+
                 print(f"DEBUG: Processing request for email: {email}")
                 if supabase:
                     scan_data = {
@@ -138,18 +159,15 @@ async def analyze_plant(
                         "confidence": 0.95 
                     }
                     supabase.table("scans").insert(scan_data).execute()
-                    print(f"DEBUG: Saved to history for {email}")
-                else:
-                    print("DEBUG: Supabase not connected, skipping history save.")
                 
                 # Send email report (only if email is provided)
-                print(f"DEBUG: Attempting to send premium email report to {email}...")
-                send_analysis_report(email, result)
+                success = send_analysis_report(email, result)
+                email_status = "Sent successfully" if success else "Failed to send (Check credentials)"
             except Exception as e:
-                print(f"WARNING: Background task failed (History/Email): {e}")
-        else:
-            print("DEBUG: No email provided, skipping history and email report.")
-            
+                print(f"WARNING: Background task failed: {e}")
+                email_status = f"Error: {str(e)}"
+        
+        result["email_status"] = email_status
         return JSONResponse(content=result, media_type="application/json; charset=utf-8")
     except Exception as e:
         if os.path.exists(temp_path):
