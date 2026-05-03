@@ -12,10 +12,23 @@ load_dotenv()
 class PlantReportPDF(FPDF):
     def header(self):
         # Add Logo Watermark/Branding
-        logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        # More robust path for Vercel:
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(curr_dir, "assets", "logo.png")
+        
         if os.path.exists(logo_path):
             # Place logo in top right
-            self.image(logo_path, 170, 8, 30)
+            self.image(logo_path, 170, 8, 25)
+            
+            # Central faint watermark (using image with transparency if possible, 
+            # but fpdf2 handles it via alpha in image or just placing it)
+            # Since fpdf2 simple image doesn't do alpha easily without PIL, we just place it.
+            # We'll place it in the center.
+            self.set_alpha(0.1) # Set transparency
+            self.image(logo_path, 60, 100, 90)
+            self.set_alpha(1.0) # Reset transparency
+        else:
+            print(f"WARNING: Logo not found at {logo_path}")
         
         self.set_font('Helvetica', 'B', 15)
         self.set_text_color(46, 125, 50) # GreenMind Green
@@ -215,16 +228,17 @@ def send_analysis_report(receiver_email, result):
 
     try:
         print(f"DEBUG: Connecting to SMTP {smtp_server}:{smtp_port}...")
-        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=20) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
         
         # Cleanup temp PDF
         if os.path.exists(temp_pdf):
-            os.remove(temp_pdf)
+            try: os.remove(temp_pdf)
+            except: pass
             
-        print(f"DEBUG: Premium email with PDF sent successfully to {receiver_email}")
+        print(f"SUCCESS: Premium email with PDF sent to {receiver_email}")
         return True
     except smtplib.SMTPAuthenticationError:
         print("ERROR: SMTP Authentication failed. Check your EMAIL_USER and EMAIL_PASSWORD (App Password).")
