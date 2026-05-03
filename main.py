@@ -139,18 +139,11 @@ async def analyze_plant(
                 return JSONResponse(status_code=429, content={"error": "Free AI limit reached. Please try again in 1 minute."})
             return JSONResponse(status_code=500, content=result)
         
-        # Save to history and send email (in a separate try block to prevent main failure)
+        # Save to history and send email (in separate try blocks to prevent cross-failure)
         email_status = "Not requested"
         if email:
+            # 1. Try to save to Supabase History
             try:
-                plant = sanitize_for_pdf(result.get("plant", "Unknown Plant"))
-                disease = sanitize_for_pdf(result.get("disease", "Unknown Condition"))
-                confidence = sanitize_for_pdf(str(result.get("confidence", "N/A")))
-                description = sanitize_for_pdf(result.get("description", ""))
-                cause = sanitize_for_pdf(result.get("cause", ""))
-                solution = sanitize_for_pdf(result.get("solution", ""))
-
-                print(f"DEBUG: Processing request for email: {email}")
                 if supabase:
                     scan_data = {
                         "user_email": email,
@@ -159,13 +152,17 @@ async def analyze_plant(
                         "confidence": 0.95 
                     }
                     supabase.table("scans").insert(scan_data).execute()
-                
-                # Send email report (only if email is provided)
+                    print(f"DEBUG: Saved to history for {email}")
+            except Exception as db_e:
+                print(f"WARNING: Supabase history save failed: {db_e}")
+            
+            # 2. Try to send Email Report
+            try:
                 success = send_analysis_report(email, result)
-                email_status = "Sent successfully" if success else "Failed to send (Check credentials)"
-            except Exception as e:
-                print(f"WARNING: Background task failed: {e}")
-                email_status = f"Error: {str(e)}"
+                email_status = "Sent successfully" if success else "Failed to send (Check SMTP)"
+            except Exception as mail_e:
+                print(f"WARNING: Email report failed: {mail_e}")
+                email_status = f"Email Error: {str(mail_e)}"
         
         result["email_status"] = email_status
         return JSONResponse(content=result, media_type="application/json; charset=utf-8")
