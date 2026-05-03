@@ -48,14 +48,17 @@ def analyze_image_with_gemini(image_path, language="english"):
     """
 
     all_errors = []
+    quota_exhausted = True  # Assume all exhausted unless one gives a different error
+
     for i, key in enumerate(API_KEYS):
         try:
             print(f"DEBUG: Using Gemini Key #{i+1}...")
             genai.configure(api_key=key)
             
-            # Try primary model
+            # Try primary model (Gemini 3 Flash as of 2026)
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model_name = 'gemini-3-flash-preview'
+                model = genai.GenerativeModel(model_name)
                 img = Image.open(image_path)
                 response = model.generate_content([prompt, img])
             except Exception as e:
@@ -64,33 +67,46 @@ def analyze_image_with_gemini(image_path, language="english"):
                     print(f"WARNING: Key #{i+1} quota exceeded. Rotating...")
                     continue # Skip to next key
                 
-                print(f"DEBUG: 1.5-flash failed, trying fallback 2.0-flash... ({e})")
-                model = genai.GenerativeModel('gemini-2.0-flash')
+                print(f"DEBUG: {model_name} failed, trying fallback gemini-flash-latest... ({e})")
+                model = genai.GenerativeModel('gemini-flash-latest')
                 img = Image.open(image_path)
                 response = model.generate_content([prompt, img])
             
             if not response or not response.text:
+                print(f"WARNING: Key #{i+1} returned empty response.")
                 continue
                 
             text = response.text.strip()
+            # Handle potential markdown code blocks
             if text.startswith("```json"):
                 text = text[7:-3].strip()
             elif text.startswith("```"):
                 text = text[3:-3].strip()
+            
+            # Remove any non-json leading/trailing text if Gemini adds chatter
+            if "{" in text and "}" in text:
+                text = text[text.find("{"):text.rfind("}")+1]
                 
-            return json.loads(text)
+            result = json.loads(text)
+            quota_exhausted = False
+            return result
             
         except Exception as e:
             error_msg = str(e)
             if "429" in error_msg or "quota" in error_msg.lower():
                 print(f"WARNING: Key #{i+1} exhausted. Rotating...")
                 continue
-            all_errors.append(error_msg)
+            
+            quota_exhausted = False # Got a real error, not just quota
+            all_errors.append(f"Key #{i+1}: {error_msg}")
             print(f"ERROR: Gemini Key #{i+1} failed: {error_msg}")
             continue
                 
-    if any("429" in err or "quota" in err.lower() for err in all_errors):
+    if not all_errors and quota_exhausted:
         return {"error": "QUOTA_EXCEEDED"}
+    
+    if all_errors:
+        return {"error": f"AI analysis failed: {'; '.join(all_errors[:2])}"}
     
     return None
 
@@ -103,13 +119,16 @@ def chat_with_gemini(message, context="", language="english"):
     for i, key in enumerate(API_KEYS):
         try:
             genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-3-flash-preview')
             response = model.generate_content(full_prompt)
-            return response.text
+            if response and response.text:
+                return response.text
+            continue
         except Exception as e:
-            if "429" in str(e) or "quota" in str(e).lower():
+            error_str = str(e).lower()
+            if "429" in error_str or "quota" in error_str:
                 print(f"WARNING: Chat Key #{i+1} quota exceeded. Rotating...")
                 continue
             return f"Error: {str(e)}"
             
-    return "All API keys are exhausted. Please try again later."
+    return "All API keys are exhausted or service is unavailable. Please try again later."

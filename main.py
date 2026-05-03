@@ -104,7 +104,10 @@ async def analyze_plant(
     language: str = Form("english"),
     email: str = Form(None)
 ):
-    temp_path = f"/tmp/temp_{uuid.uuid4()}.jpg"
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    temp_path = os.path.join(temp_dir, f"temp_{uuid.uuid4()}.jpg")
+    
     try:
         contents = await image.read()
         with open(temp_path, "wb") as f:
@@ -116,10 +119,12 @@ async def analyze_plant(
             os.remove(temp_path)
             
         if not result:
-            return JSONResponse(status_code=500, content={"error": "AI analysis failed"})
+            return JSONResponse(status_code=500, content={"error": "AI analysis failed (Empty result)"})
             
-        if isinstance(result, dict) and result.get("error") == "QUOTA_EXCEEDED":
-            return JSONResponse(status_code=429, content={"error": "Free AI limit reached. Please try again in 1 minute."})
+        if isinstance(result, dict) and "error" in result:
+            if result.get("error") == "QUOTA_EXCEEDED":
+                return JSONResponse(status_code=429, content={"error": "Free AI limit reached. Please try again in 1 minute."})
+            return JSONResponse(status_code=500, content=result)
         
         # Save to history and send email (in a separate try block to prevent main failure)
         if email:
