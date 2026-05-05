@@ -141,23 +141,43 @@ async def analyze_plant(
         
         # Save to history and send email (in separate try blocks to prevent cross-failure)
         email_status = "Not requested"
+        history_status = "Not requested"
+        
         if email:
             # 1. Try to save to Supabase History
             try:
                 if supabase:
+                    # Sanitize confidence (Gemini often returns "95%")
+                    conf_val = result.get("confidence", 0.95)
+                    if isinstance(conf_val, str):
+                        try:
+                            if "%" in conf_val:
+                                conf_val = float(conf_val.replace("%", "").strip()) / 100.0
+                            else:
+                                conf_val = float(conf_val.strip())
+                        except:
+                            conf_val = 0.95
+                    
                     scan_data = {
                         "user_email": email,
                         "plant_name": result.get("plant", "Unknown"),
                         "disease_name": result.get("disease", "Healthy"),
-                        "confidence": result.get("confidence", 0.95),
+                        "confidence": conf_val,
                         "description": result.get("description", ""),
                         "cause": result.get("cause", ""),
                         "solution": result.get("solution", "")
                     }
-                    supabase.table("scans").insert(scan_data).execute()
-                    print(f"DEBUG: Saved to history for {email}")
+                    save_res = supabase.table("scans").insert(scan_data).execute()
+                    if save_res.data:
+                        history_status = "Saved successfully"
+                        print(f"DEBUG: Saved to history for {email}")
+                    else:
+                        history_status = "Failed to save (No data returned)"
+                else:
+                    history_status = "Database not connected"
             except Exception as db_e:
                 print(f"WARNING: Supabase history save failed: {db_e}")
+                history_status = f"Database Error: {str(db_e)}"
             
             # 2. Try to send Email Report
             try:
@@ -168,6 +188,7 @@ async def analyze_plant(
                 email_status = f"Email Error: {str(mail_e)}"
         
         result["email_status"] = email_status
+        result["history_status"] = history_status
         return JSONResponse(content=result, media_type="application/json; charset=utf-8")
     except Exception as e:
         if os.path.exists(temp_path):
@@ -180,10 +201,23 @@ async def get_history(email: str):
         return JSONResponse(status_code=500, content={"error": "Database not connected"})
     
     try:
-        response = supabase.table("scans").select("*").eq("user_email", email).order("created_at", desc=True).execute()
+        # Use ilike for case-insensitive email matching
+        response = supabase.table("scans").select("*").ilike("user_email", email).order("created_at", desc=True).execute()
         return JSONResponse(content=response.data)
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERROR in get_history: {error_details}")
+        return JSONResponse(status_code=500, content={"error": str(e), "details": "Check server logs for traceback"})
+
+@app.get("/debug_scans")
+async def debug_scans():
+    if not supabase: return {"error": "No DB"}
+    try:
+        res = supabase.table("scans").select("*").limit(5).execute()
+        return {"count": len(res.data), "first_rows": res.data}
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.post("/chat")
 async def chat_bot(request: dict):
@@ -195,8 +229,8 @@ async def chat_bot(request: dict):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "db_connected": supabase is not None}
+    return {"status": "ok", "db_connected": supabase is not None, "version": "1.0.5"}
 
 @app.get("/")
 def read_root():
-    return {"message": "GreenMind AI API is running"}
+    return {"message": "GreenMind AI API is running", "version": "1.0.5"}
