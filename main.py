@@ -189,7 +189,7 @@ async def analyze_plant(
         
         result["email_status"] = email_status
         result["history_status"] = history_status
-        return JSONResponse(content=result, media_type="application/json; charset=utf-8")
+        return JSONResponse(content=result)
     except Exception as e:
         if os.path.exists(temp_path):
             os.remove(temp_path)
