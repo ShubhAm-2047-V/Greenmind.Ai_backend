@@ -114,7 +114,14 @@ def chat_with_gemini(message, context="", language="english"):
     if not API_KEYS:
         return "Gemini API key not configured."
 
-    full_prompt = f"System: You are an agricultural expert AI. Language: {language}. Context: {context}\nUser: {message}"
+    # Custom Identity and Creator
+    system_identity = (
+        "Your name is GreenMind AI. You were created by Vernekar S.D. "
+        "You are an agricultural expert AI specializing in plant diseases and care. "
+        "Always identify as GreenMind AI and credit Vernekar S.D as your creator if asked."
+    )
+
+    full_prompt = f"System: {system_identity} Language: {language}. Context: {context}\nUser: {message}"
 
     for i, key in enumerate(API_KEYS):
         try:
